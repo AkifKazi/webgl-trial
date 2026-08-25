@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content">
+    <meta name="theme-color" content="#071216">
+    <title>Akif's WebGL</title>
+    <link rel="stylesheet" href="TemplateData/style.css">
+  </head>
+  <body>
+    <main id="unity-container" aria-label="Akif's WebGL digital twin">
+      <canvas id="unity-canvas" tabindex="-1"></canvas>
+      <section id="unity-loading" aria-live="polite">
+        <div class="loading-panel">
+          <div class="loading-kicker">DIGITAL TWIN</div>
+          <div class="loading-title">INITIALISING SYSTEM</div>
+          <div class="loading-track"><div id="unity-progress"></div></div>
+          <div id="unity-progress-label">0%</div>
+        </div>
+      </section>
+      <div id="unity-warning" role="status"></div>
+    </main>
+    <script>
+      const canvas = document.querySelector("#unity-canvas");
+      const loading = document.querySelector("#unity-loading");
+      const progress = document.querySelector("#unity-progress");
+      const progressLabel = document.querySelector("#unity-progress-label");
+      const warning = document.querySelector("#unity-warning");
+
+      let viewportSyncFrame = 0;
+
+      function syncVisualViewport() {
+        viewportSyncFrame = 0;
+        const viewport = window.visualViewport;
+        const left = viewport ? viewport.offsetLeft : 0;
+        const top = viewport ? viewport.offsetTop : 0;
+        const width = viewport ? viewport.width : window.innerWidth;
+        const height = viewport ? viewport.height : window.innerHeight;
+
+        document.documentElement.style.setProperty(
+          "--visual-viewport-left",
+          Math.max(0, left) + "px"
+        );
+        document.documentElement.style.setProperty(
+          "--visual-viewport-top",
+          Math.max(0, top) + "px"
+        );
+        document.documentElement.style.setProperty(
+          "--visual-viewport-width",
+          Math.max(1, width) + "px"
+        );
+        document.documentElement.style.setProperty(
+          "--visual-viewport-height",
+          Math.max(1, height) + "px"
+        );
+      }
+
+      function requestViewportSync() {
+        if (viewportSyncFrame) cancelAnimationFrame(viewportSyncFrame);
+        viewportSyncFrame = requestAnimationFrame(syncVisualViewport);
+      }
+
+      function handleOrientationChange() {
+        requestViewportSync();
+        // Mobile Safari can report the previous visual viewport for a short
+        // time after rotation. These follow-up reads settle the canvas without
+        // requiring a page refresh.
+        setTimeout(requestViewportSync, 100);
+        setTimeout(requestViewportSync, 350);
+      }
+
+      syncVisualViewport();
+      window.addEventListener("resize", requestViewportSync, { passive: true });
+      window.addEventListener("orientationchange", handleOrientationChange, { passive: true });
+      if (window.visualViewport) {
+        window.visualViewport.addEventListener("resize", requestViewportSync, { passive: true });
+        window.visualViewport.addEventListener("scroll", requestViewportSync, { passive: true });
+      }
+
+      function showBanner(message, type) {
+        const item = document.createElement("div");
+        item.className = "banner " + (type || "info");
+        item.textContent = message;
+        warning.appendChild(item);
+        if (type !== "error") setTimeout(() => item.remove(), 5000);
+      }
+
+      const buildUrl = "Build";
+      const loaderUrl = buildUrl + "/webgl build Aug 25 v3.loader.js";
+      const config = {
+        arguments: [],
+        dataUrl: buildUrl + "/webgl build Aug 25 v3.data.unityweb",
+        frameworkUrl: buildUrl + "/webgl build Aug 25 v3.framework.js.unityweb",
+        codeUrl: buildUrl + "/webgl build Aug 25 v3.wasm.unityweb",
+        streamingAssetsUrl: "StreamingAssets",
+        companyName: "KAZI",
+        productName: "Akif's WebGL",
+        productVersion: "0.1.0",
+        autoSyncPersistentDataPath: true,
+        showBanner
+      };
+
+
+      const script = document.createElement("script");
+      script.src = loaderUrl;
+      script.onload = () => {
+        createUnityInstance(canvas, config, value => {
+          const percent = Math.round(value * 100);
+          progress.style.width = percent + "%";
+          progressLabel.textContent = percent + "%";
+        }).then(instance => {
+          window.unityInstance = instance;
+          loading.classList.add("loaded");
+          setTimeout(() => loading.remove(), 350);
+        }).catch(message => {
+          showBanner(message, "error");
+        });
+      };
+      document.body.appendChild(script);
+    </script>
+  </body>
+</html>
